@@ -1,4 +1,4 @@
-(ns leiningen.ragel
+(ns leiningen.jflex
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
 	    [clojure.string :as str]
@@ -21,8 +21,8 @@ within `dirs` modified since it was most recently compiled."
 (defn- jflex-command
   "Compile all sources of possible options and add important defaults."
   [project args source compiled]
-      (concat (:jflex-options project) args
-	      ["-o"  (str (.getPath compiled) ".java")  (.getPath source) ]))
+      (concat ["jflex"]
+	      ["-d"  (.getPath compiled)   (.getPath source) ]))
 
 (defn run-jflex-target
   [project args [source compiled]]

@@ -7,7 +7,7 @@ A Leiningen plugin to compile jflex specification  to Java source files.
 Put `[lein-jflex "0.1.0"]` into the `:plugins` vector of your `project.clj` and
 set `:jflex-source-paths` to the path to your Ragel source files.
 
-Then compile any stale Ragel source files to Java source files by running:
+Then compile any JFlex source files to Java source files by running:
 
     $ lein jflex
 
