@@ -1,70 +1,81 @@
 (ns leiningen.jflex
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
-	    [clojure.string :as str]
+            [clojure.string :as str]
             [leiningen.core.main :as main])
   (:import [java.io File]))
 
 (defn- stale-jflex-targets
-  "Returns a lazy seq of [source, compiled] tuples for every jflex source file
-within `dirs` modified since it was most recently compiled."
-  [dirs compile-path]
-  (for [dir dirs
-        ^File source (filter #(-> ^File % (.getName) (.endsWith ".jflex"))
-                             (file-seq (io/file dir)))
-        :let [rel-source (.substring (.getPath source) (inc (count dir)))
-              rel-compiled (.substring rel-source 0 (- (count rel-source) 3))
-              compiled (io/file compile-path rel-compiled)]
-        :when (>= (.lastModified source) (.lastModified compiled))]
-    [source compiled]))
+  "Возвращает список пар [source, compiled] для файлов, которые нужно перегенерировать."
+  [jflex-config root]
+  (->> jflex-config
+       (filter (fn [{:keys [file output-file]}]
+                 (and file output-file))) ; Шаг 1: Фильтруем элементы с file и output-file
+       (map (fn [{:keys [file output-file]}]
+              (let [source (io/file root file)
+                    compiled (io/file output-file)]
+                [source compiled]))) ; Шаг 2: Создаем пары [source compiled]
+       (filter (fn [[source compiled]]
+                 (and (.exists source) ; Шаг 3: Проверяем существование source
+                      (>= (.lastModified source) ; и актуальность
+                          (.lastModified compiled))))) ; относительно compiled
+       (into []))) ; Шаг 4: Преобразуем в вектор
+
 
 (defn- jflex-command
-  "Compile all sources of possible options and add important defaults."
-  [project args source compiled]
-      (concat ["jflex"]
-	      ["-d"  (.getPath compiled)   (.getPath source) ]))
+  [source compiled]
+;  (println "source:" source)
+;  (println "source type:" (type source))
+;  (println "source path:" (.getPath source))
+  (let [output-dir (.getParent (io/file compiled))]
+    ["jflex" "-d" output-dir (.getPath source)]))
 
 (defn run-jflex-target
-  [project args [source compiled]]
-  (.mkdirs (.getParentFile compiled))
-  (let [command (jflex-command project args source compiled)
+  [project [source compiled]]
+  (main/info "source   = " (.getPath source))
+  (main/info "compiled = " (.getPath compiled))
+  (let [output-dir (.getParent (io/file compiled))]
+    (.mkdirs (io/file output-dir)))
+  (let [command (jflex-command  source  compiled)]
+    (println "Running command:" command)
+;    (println "Types of args:" (map type command))
+    (let [
         {:keys [exit out err]} (apply sh/sh command)]
-    (when-not (.isEmpty out) (print out))
-    (when-not (.isEmpty err) (print err))
+    (when-not (str/blank? out) (println out))
+    (when-not (str/blank? err) (println err))
     (when-not (zero? exit)
       (main/abort "lein-jflex: `jflex` execution failed"
-                  "with status code" exit))))
+                  "with status code" exit)))))
 
 (defn- run-jflex-task
-  "Run jflex to compile all source file in the project."
   [project args]
-  (let [compile-path (:jflex-compile-path project)
-        source-paths (:jflex-source-paths project)
-        targets (stale-jflex-targets source-paths compile-path)]
-    (when (seq targets)
-      (main/info "Compiling" (count targets) "jflex source files to" compile-path)
-      (dorun (map (partial run-jflex-target project args) targets)))))
-
-(defn jflex-defaults
-  [project]
-  (let [compile-path (.getPath (io/file (:target-path project) "jflex"))]
-    {:jflex-compile-path compile-path
-     :jflex-java-extension "java"
-     :jflex-options []
-     :jflex-command "jflex"}))
+  (let [jflex-config (get project :jflex 23)
+        root (:root project)
+        ]
+    (when (seq jflex-config)
+      (main/info "Compiling" (count jflex-config) "jflex source files.")
+      (let [
+            kv (stale-jflex-targets jflex-config root)]
+      (dorun (map (partial run-jflex-target project) kv))))))
 
 (defn jflex
   "Compile jflex source files.
 
-Add a :jflex-source-paths key to project.clj to specify where to find them.
-Will compile the files to :jflex-compile-path, which defaults to 'target/jflex'.
-You will probably want to add :jflex-compile-path to your :java-source-paths.
-Provide :jflex-command to specify the command used to run jflex (default
-'jflex') and :jflex-options for any additional arguments to pass to each jflex
-command instance.
+Specify files to generate in project.clj like:
 
-Any options passed to the task will also be passed to each jflex command
-instance."
+:jflex [
+  {:file \"src/jflex/exer.jflex\"
+   :output-file \"src/java/exer/Lexer.java\"}
+  {...}]
+"
   [project & args]
-  (let [project (merge (jflex-defaults project) project)]
-    (run-jflex-task project args)))
+  (run-jflex-task project args))
+
+
+
+;(def mock-project
+;  {:name "test-project"
+;   :jflex [
+;     {:file "src/jflex/BSLLexer.jflex"
+;      :output-file "src/java/riki/bsl/lexer/BSLLexer.java"}]
+;   :root "/mnt/fast/src/clojure/riki.bsl.lexer"})
