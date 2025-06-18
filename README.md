@@ -5,30 +5,30 @@ A Leiningen plugin to compile jflex specification  to Java source files.
 ## Usage
 
 Put `[lein-jflex "0.1.0"]` into the `:plugins` vector of your `project.clj` and
-set `:jflex-source-paths` to the path to your Ragel source files.
+set `:jflex` as vector oof map. Each map must have two keys :file and :output-file
+
 
 Then compile any JFlex source files to Java source files by running:
 
     $ lein jflex
 
-For optimal usefulness, you will probably want to include `:jflex-compile-path`
-(default `target/jflex`) in your `:java-source-paths` and `jflex` in your
-`:prep-tasks`.  Example:
+
+Example of project.clj
 
 ```clj
 (defproject example-project "0.1.0-SNAPSHOT"
   ...
   :plugins [[lein-jflex "0.1.0"]]
-  :java-source-paths ["target/jflex"]
-  :jflex-source-paths ["src/jflex"]
   :prep-tasks ["jflex" "javac"]
+  :jflex [
+    {:file "src/jflex/BSLLexer.jflex"
+     :output-file "src/java/riki/bsl/lexer/BSLLexer.java"}]
   ...)
 ```
 
-You may specify the Jflex command to use with `:jflex-command` and any other
-options to pass to Jflex with `:jflex-options`.
+
 
 ## License
-Copyright © 20120 Bombin Valentin
+Copyright © 2025 Bombin Valentin
 
 Distributed under the Eclipse Public License, the same as Clojure.
