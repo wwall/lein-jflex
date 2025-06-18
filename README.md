@@ -5,7 +5,7 @@ A Leiningen plugin to compile jflex specification  to Java source files.
 ## Usage
 
 Put `[lein-jflex "0.1.0"]` into the `:plugins` vector of your `project.clj` and
-set `:jflex` as vector oof map. Each map must have two keys :file and :output-file
+set `:jflex` as vector of map. Each map must have two keys :file and :output-file
 
 
 Then compile any JFlex source files to Java source files by running:
